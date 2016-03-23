@@ -11,7 +11,7 @@ from flask import render_template, request, redirect, url_for,jsonify,g,session
 from app import db
 
 from flask.ext.wtf import Form 
-from wtforms.fields import TextField # other fields include PasswordField 
+from wtforms.fields import TextField, PasswordField # other fields include PasswordField 
 from wtforms.validators import Required, Email
 from app.models import Myprofile
 from app.forms import LoginForm
@@ -23,8 +23,7 @@ from app import oid, lm
 class ProfileForm(Form):
      first_name = TextField('First Name', validators=[Required()])
      last_name = TextField('Last Name', validators=[Required()])
-     # evil, don't do this
-     image = TextField('Image', validators=[Required(), Email()])
+     password=PasswordField('Password',validators=[Required()])
 
 
 @app.before_request
@@ -58,15 +57,15 @@ def profile_add():
     if request.method == 'POST':
         first_name = request.form['first_name']
         last_name = request.form['last_name']
-
+        password=request.form['password']
         # write the information to the database
         newprofile = Myprofile(first_name=first_name,
-                               last_name=last_name)
+                               last_name=last_name,password=password)
         db.session.add(newprofile)
         db.session.commit()
 
         return "{} {} was added to the database".format(request.form['first_name'],
-                                             request.form['last_name'])
+                                             request.form['last_name'],request.form['password'])
 
     form = ProfileForm()
     return render_template('profile_add.html',
