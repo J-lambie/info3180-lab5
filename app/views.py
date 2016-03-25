@@ -11,10 +11,9 @@ from flask import render_template, request, redirect, url_for,jsonify,g,session
 from app import db
 
 from flask.ext.wtf import Form 
-from wtforms.fields import TextField, PasswordField # other fields include PasswordField 
+from wtforms.fields import TextField, PasswordField,BooleanField # other fields include PasswordField 
 from wtforms.validators import Required, Email
 from app.models import Myprofile
-from app.forms import LoginForm
 
 from flask.ext.login import login_user, logout_user, current_user, login_required
 from app import app, db, lm, oid
@@ -23,7 +22,13 @@ from app import oid, lm
 class ProfileForm(Form):
      first_name = TextField('First Name', validators=[Required()])
      last_name = TextField('Last Name', validators=[Required()])
+     user_name = TextField('User Name', validators=[Required()])
      password=PasswordField('Password',validators=[Required()])
+
+class LoginForm(Form):
+    user_name = TextField('User Name', validators=[Required()])
+    password=PasswordField('Password',validators=[Required()])
+    remember_me = BooleanField('remember_me', default=False)
 
 
 @app.before_request
@@ -36,17 +41,17 @@ def before_request():
 @app.route('/login', methods=['GET', 'POST'])
 @oid.loginhandler
 def login():
-    if g.user is not None and g.user.is_authenticated():
-        return redirect(url_for('index'))
     form = LoginForm()
-    print app.config['OPENID_PROVIDERS']
     if form.validate_on_submit():
-        session['remember_me'] = form.remember_me.data
-        return oid.try_login(form.openid.data, ask_for=['nickname', 'email'])
+        user=Myprofile.query.get(form.user_name.data)
+        if form.password.data==user.password:
+            login_user(user)
+            return redirect(url_for('home'))
+  
     return render_template('login.html', 
                            title='Sign In',
                            form=form,
-                           providers=app.config['OPENID_PROVIDERS'])
+                           )
 @app.route('/')
 def home():
     """Render website's home page."""
@@ -57,15 +62,14 @@ def profile_add():
     if request.method == 'POST':
         first_name = request.form['first_name']
         last_name = request.form['last_name']
+        user_name = request.form['user_name']
         password=request.form['password']
         # write the information to the database
-        newprofile = Myprofile(first_name=first_name,
-                               last_name=last_name,password=password)
+        newprofile = Myprofile(first_name=first_name,last_name=last_name,nickname=user_name,password=password)
         db.session.add(newprofile)
         db.session.commit()
 
-        return "{} {} was added to the database".format(request.form['first_name'],
-                                             request.form['last_name'],request.form['password'])
+        return "{} {} was added to the database".format(request.form['first_name'],request.form['last_name'])
 
     form = ProfileForm()
     return render_template('profile_add.html',
